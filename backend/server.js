@@ -4,49 +4,36 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const path = require('path');
 
-// Chargement des variables d'environnement
+// Chargement des variables d'environnement (.env)
 dotenv.config();
 
 const app = express();
 
-// ==========================================
-// CONFIGURATION DU CORS (SÉCURITÉ)
-// ==========================================
-const allowedOrigins = [
-  'http://localhost:5173', // Ton interface locale
-  'http://localhost:3000', 
-  'https://lepetitpoussin.netlify.app' // REMPLACE PAR TON URL NETLIFY RÉELLE
-];
-
+// ==========================================================
+// CONFIGURATION DU CORS (Ouverture totale pour test mobile)
+// ==========================================================
 app.use(cors({
-  origin: function (origin, callback) {
-    // Autorise les requêtes sans origine (comme sur certains navigateurs mobiles ou Postman)
-    if (!origin) return callback(null, true);
-    
-    if (allowedOrigins.indexOf(origin) !== -1 || origin.includes('netlify.app')) {
-      callback(null, true);
-    } else {
-      callback(new Error('Accès refusé par la politique CORS'));
-    }
-  },
-  credentials: true
+  origin: '*', // Autorise absolument toutes les sources (PC, Mobile, Tablettes)
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 app.use(express.json());
 
-// Servir les images uploadées (si tu n'utilises pas Cloudinary pour tout)
+// Servir le dossier uploads si nécessaire
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// ==========================================
-// CONNEXION MONGODB
-// ==========================================
+// ==========================================================
+// CONNEXION À LA BASE DE DONNÉES MONGODB
+// ==========================================================
 mongoose.connect(process.env.MONGO_URI)
-  .then(() => console.log('✅ Connecté à MongoDB Atlas'))
-  .catch(err => console.error('❌ Erreur de connexion MongoDB:', err));
+  .then(() => console.log('✅ Connecté avec succès à MongoDB Atlas'))
+  .catch(err => console.error('❌ Erreur critique de connexion MongoDB:', err));
 
-// ==========================================
-// IMPORTATION DES ROUTES
-// ==========================================
+// ==========================================================
+// IMPORTATION ET RÉGISTRE DES ROUTES
+// ==========================================================
+// Assure-toi que ces fichiers existent bien dans ton dossier backend/routes/
 const childrenRoutes = require('./routes/children');
 const staffRoutes = require('./routes/staff');
 const expenseRoutes = require('./routes/expenses');
@@ -59,17 +46,22 @@ app.use('/api/expenses', expenseRoutes);
 app.use('/api/events', eventRoutes);
 app.use('/api/media', mediaRoutes);
 
-// Route de test
+// Route de diagnostic (Test direct dans le navigateur)
 app.get('/', (req, res) => {
-  res.send('Le serveur du Petit Poussin est opérationnel ! 🚀');
+  res.status(200).json({ 
+    message: "Le serveur du Petit Poussin est opérationnel ! 🚀",
+    status: "En ligne",
+    timestamp: new Date()
+  });
 });
 
-// ==========================================
+// ==========================================================
 // LANCEMENT DU SERVEUR
-// ==========================================
+// ==========================================================
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`|-------------------------------------------|`);
-  console.log(`| Serveur lancé sur le port : ${PORT}        |`);
-  console.log(`|-------------------------------------------|`);
+  console.log(`=============================================`);
+  console.log(`🚀 SERVEUR DÉMARRÉ SUR LE PORT : ${PORT}`);
+  console.log(`🌍 URL DE TEST : http://localhost:${PORT}/`);
+  console.log(`=============================================`);
 });
