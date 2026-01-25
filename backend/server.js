@@ -3,65 +3,50 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const path = require('path');
+const fs = require('fs'); // Pour vérifier l'existence des fichiers
 
-// Chargement des variables d'environnement (.env)
 dotenv.config();
-
 const app = express();
 
-// ==========================================================
-// CONFIGURATION DU CORS (Ouverture totale pour test mobile)
-// ==========================================================
-app.use(cors({
-  origin: '*', // Autorise absolument toutes les sources (PC, Mobile, Tablettes)
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
-
+// CORS TOTAL (Pour débloquer le mobile)
+app.use(cors({ origin: '*', methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'], allowedHeaders: ['Content-Type'] }));
 app.use(express.json());
 
-// Servir le dossier uploads si nécessaire
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-
-// ==========================================================
-// CONNEXION À LA BASE DE DONNÉES MONGODB
-// ==========================================================
+// CONNEXION MONGODB
 mongoose.connect(process.env.MONGO_URI)
-  .then(() => console.log('✅ Connecté avec succès à MongoDB Atlas'))
-  .catch(err => console.error('❌ Erreur critique de connexion MongoDB:', err));
+  .then(() => console.log('✅ MongoDB Connecté'))
+  .catch(err => console.error('❌ Erreur MongoDB:', err));
 
 // ==========================================================
-// IMPORTATION ET RÉGISTRE DES ROUTES
+// CHARGEMENT SÉCURISÉ DES ROUTES
 // ==========================================================
-// Assure-toi que ces fichiers existent bien dans ton dossier backend/routes/
-const childrenRoutes = require('./routes/children');
-const staffRoutes = require('./routes/staff');
-const expenseRoutes = require('./routes/expenses');
-const eventRoutes = require('./routes/events');
-const mediaRoutes = require('./routes/media');
+const routes = [
+  { path: '/api/children', file: './routes/children' },
+  { path: '/api/staff', file: './routes/staff' },
+  { path: '/api/expenses', file: './routes/expenses' },
+  { path: '/api/events', file: './routes/events' },
+  { path: '/api/media', file: './routes/media' }
+];
 
-app.use('/api/children', childrenRoutes);
-app.use('/api/staff', staffRoutes);
-app.use('/api/expenses', expenseRoutes);
-app.use('/api/events', eventRoutes);
-app.use('/api/media', mediaRoutes);
+routes.forEach(route => {
+  try {
+    // On vérifie si le fichier existe (avec .js ou sans)
+    const fullPath = path.join(__dirname, route.file + '.js');
+    if (fs.existsSync(fullPath)) {
+      app.use(route.path, require(route.file));
+      console.log(`✅ Route chargée : ${route.path}`);
+    } else {
+      console.error(`⚠️ Fichier manquant : ${fullPath}`);
+    }
+  } catch (e) {
+    console.error(`❌ Erreur chargement route ${route.path}:`, e.message);
+  }
+});
 
-// Route de diagnostic (Test direct dans le navigateur)
+// Route de diagnostic
 app.get('/', (req, res) => {
-  res.status(200).json({ 
-    message: "Le serveur du Petit Poussin est opérationnel ! 🚀",
-    status: "En ligne",
-    timestamp: new Date()
-  });
+  res.json({ message: "Serveur Petit Poussin en ligne !", status: "OK" });
 });
 
-// ==========================================================
-// LANCEMENT DU SERVEUR
-// ==========================================================
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`=============================================`);
-  console.log(`🚀 SERVEUR DÉMARRÉ SUR LE PORT : ${PORT}`);
-  console.log(`🌍 URL DE TEST : http://localhost:${PORT}/`);
-  console.log(`=============================================`);
-});
+app.listen(PORT, () => console.log(`🚀 Serveur actif sur le port ${PORT}`));
