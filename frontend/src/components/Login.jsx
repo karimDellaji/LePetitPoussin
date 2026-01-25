@@ -1,88 +1,118 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
-export default function Login({ onLoginSuccess }) {
-  const [role, setRole] = useState('admin');
-  const [username, setUsername] = useState(''); // Utilisé pour Admin et Nom Enseignante
-  const [password, setPassword] = useState(''); // Utilisé pour Admin
-  const [code, setCode] = useState(''); // Utilisé pour Enseignante et Parent
+const Login = () => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [role, setRole] = useState('admin'); // admin, teacher, parent
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  
+  const navigate = useNavigate();
 
-  const handleSubmit = async (e) => {
+  // === CONFIGURATION DE L'URL API ===
+  // On utilise l'URL de Render pour que ça marche sur PC et Mobile
+  const API_BASE_URL = "https://le-petit-poussin-api.onrender.com";
+
+  const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
-
-    const body = { roleType: role };
-    if (role === 'admin') { 
-        body.username = username; 
-        body.password = password; 
-    } else if (role === 'teacher') { 
-        body.username = username; 
-        body.codeAcces = code; 
-    } else { 
-        body.code = code; 
-    }
+    setLoading(true);
 
     try {
-      const response = await fetch("http://localhost:5000/api/auth/login", {
+      const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password, role }),
       });
 
       const data = await response.json();
-      if (response.ok) {
-        onLoginSuccess(data);
-      } else {
-        setError(data.message || "Accès refusé");
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Identifiants incorrects');
       }
+
+      // Stockage du token et redirection
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('role', data.role);
+
+      if (data.role === 'admin') navigate('/admin-dashboard');
+      else if (data.role === 'teacher') navigate('/teacher-dashboard');
+      else navigate('/parent-dashboard');
+
     } catch (err) {
-      setError("Le serveur ne répond pas.");
+      setError(err.message || 'Le serveur ne répond pas. Vérifiez votre connexion.');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#F4F7F6] flex items-center justify-center p-4 font-sans text-slate-700">
-      <div className="bg-white p-10 rounded-[3rem] shadow-[0_20px_60px_rgba(0,0,0,0.05)] w-full max-w-md border border-slate-50">
-        <div className="text-center mb-10">
-          <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-[2rem] flex items-center justify-center mx-auto mb-4 text-3xl font-black shadow-inner">P</div>
-          <h1 className="text-xl font-black text-slate-800 tracking-[0.2em] uppercase">Petit Poussin</h1>
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+      <div className="max-w-md w-full space-y-8 p-8 bg-white shadow-lg rounded-2xl border border-emerald-100">
+        <div className="text-center">
+          <h2 className="text-3xl font-extrabold text-gray-900">Le Petit Poussin</h2>
+          <p className="mt-2 text-sm text-gray-600">Connectez-vous à votre espace</p>
         </div>
 
-        {/* SELECTEUR DE ROLE */}
-        <div className="flex bg-slate-50 p-1.5 rounded-2xl mb-8 border border-slate-100">
-          {['admin', 'teacher', 'parent'].map(r => (
-            <button key={r} type="button" onClick={() => setRole(r)} className={`flex-1 py-3 rounded-xl font-black text-[9px] uppercase tracking-widest transition-all ${role === r ? 'bg-white shadow-sm text-emerald-600 border border-slate-100' : 'text-slate-400'}`}>
-              {r === 'teacher' ? 'Enseignante' : r}
+        <form className="mt-8 space-y-6" onSubmit={handleLogin}>
+          <div className="rounded-md shadow-sm space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Rôle</label>
+              <select
+                value={role}
+                onChange={(e) => setRole(e.target.value)}
+                className="mt-1 block w-full border border-gray-300 rounded-full shadow-sm py-2 px-4 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 text-sm"
+              >
+                <option value="admin">Administrateur</option>
+                <option value="teacher">Enseignante</option>
+                <option value="parent">Parent</option>
+              </select>
+            </div>
+
+            <div>
+              <input
+                type="email"
+                required
+                className="appearance-none rounded-full relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 focus:z-10 sm:text-sm"
+                placeholder="Adresse Email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </div>
+            <div>
+              <input
+                type="password"
+                required
+                className="appearance-none rounded-full relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 focus:z-10 sm:text-sm"
+                placeholder="Mot de passe"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </div>
+          </div>
+
+          {error && (
+            <div className="text-red-500 text-sm text-center bg-red-50 py-2 rounded-full">
+              {error}
+            </div>
+          )}
+
+          <div>
+            <button
+              type="submit"
+              disabled={loading}
+              className={`group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-full text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-colors ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+              {loading ? 'Connexion en cours...' : 'Se connecter'}
             </button>
-          ))}
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {role === 'admin' && (
-            <>
-              <input required className="w-full p-5 bg-slate-50 rounded-2xl outline-none border border-transparent focus:border-emerald-500 font-bold transition-all" placeholder="Utilisateur" value={username} onChange={e => setUsername(e.target.value)} />
-              <input required type="password" className="w-full p-5 bg-slate-50 rounded-2xl outline-none border border-transparent focus:border-emerald-500 font-bold transition-all" placeholder="Mot de passe" value={password} onChange={e => setPassword(e.target.value)} />
-            </>
-          )}
-
-          {role === 'teacher' && (
-            <>
-              <input required className="w-full p-5 bg-slate-50 rounded-2xl outline-none border border-transparent focus:border-emerald-500 font-bold transition-all" placeholder="Votre Nom" value={username} onChange={e => setUsername(e.target.value)} />
-              <input required className="w-full p-5 bg-slate-50 rounded-2xl outline-none border border-transparent focus:border-emerald-500 font-bold transition-all" placeholder="Code ENS-XXX" value={code} onChange={e => setCode(e.target.value)} />
-            </>
-          )}
-
-          {role === 'parent' && (
-            <input required className="w-full p-5 bg-slate-50 rounded-2xl outline-none border border-transparent focus:border-emerald-500 font-bold transition-all" placeholder="Code Parent" value={code} onChange={e => setCode(e.target.value)} />
-          )}
-
-          {error && <p className="text-red-500 text-[10px] font-black uppercase text-center bg-red-50 p-3 rounded-xl">{error}</p>}
-
-          <button type="submit" className="w-full bg-emerald-500 text-white p-5 rounded-[2rem] font-black text-xs uppercase tracking-[0.2em] shadow-xl shadow-emerald-100 hover:bg-emerald-600 transition-all mt-4">
-            Se Connecter
-          </button>
+          </div>
         </form>
       </div>
     </div>
   );
-}
+};
+
+export default Login;
