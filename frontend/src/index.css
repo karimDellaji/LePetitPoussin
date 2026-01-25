@@ -1,0 +1,15 @@
+@import "tailwindcss";
+
+@theme {
+  /* Palette extraite du logo Katkout */
+  --color-primary: #22c55e;    /* Vert Menthe - Succès & Logo */
+  --color-secondary: #e11d48;  /* Rose Corail - Alertes & Logo */
+  --color-accent: #7c3aed;     /* Violet - Décoration & Logo */
+  
+  --radius-3xl: 1.5rem;
+  --radius-4xl: 2rem;
+}
+
+body {
+  @apply bg-gray-50 text-gray-900 antialiased;
+}
