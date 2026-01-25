@@ -18,9 +18,14 @@ mongoose.connect(process.env.MONGO_URI)
 // 1. Login direct (pour que ça marche tout de suite)
 app.post('/api/auth/login', (req, res) => {
   const { email, password } = req.body;
-  if (email === "admin" && password === "admin123") {
+  
+  // On accepte "admin" OU "admin@test.com" pour être sûr
+  if ((email === "admin" || email === "admin@test.com") && password === "admin123") {
+    console.log("✅ Connexion réussie pour:", email);
     return res.json({ token: "fake-jwt", role: "admin" });
   }
+  
+  console.log("❌ Tentative échouée pour:", email);
   res.status(401).json({ message: "Identifiants incorrects" });
 });
 
