@@ -2,50 +2,40 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
-const path = require('path');
-const fs = require('fs'); // Pour vérifier l'existence des fichiers
 
 dotenv.config();
 const app = express();
 
-// CORS TOTAL (Pour débloquer le mobile)
-app.use(cors({ origin: '*', methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'], allowedHeaders: ['Content-Type'] }));
+// Configuration CORS
+app.use(cors({ origin: '*' }));
 app.use(express.json());
 
-// CONNEXION MONGODB
+// Connexion MongoDB
 mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log('✅ MongoDB Connecté'))
   .catch(err => console.error('❌ Erreur MongoDB:', err));
 
-// ==========================================================
-// CHARGEMENT SÉCURISÉ DES ROUTES
-// ==========================================================
-const routes = [
-  { path: '/api/children', file: './routes/children' },
-  { path: '/api/staff', file: './routes/staff' },
-  { path: '/api/expenses', file: './routes/expenses' },
-  { path: '/api/events', file: './routes/events' },
-  { path: '/api/media', file: './routes/media' }
-];
-
-routes.forEach(route => {
-  try {
-    // On vérifie si le fichier existe (avec .js ou sans)
-    const fullPath = path.join(__dirname, route.file + '.js');
-    if (fs.existsSync(fullPath)) {
-      app.use(route.path, require(route.file));
-      console.log(`✅ Route chargée : ${route.path}`);
-    } else {
-      console.error(`⚠️ Fichier manquant : ${fullPath}`);
-    }
-  } catch (e) {
-    console.error(`❌ Erreur chargement route ${route.path}:`, e.message);
+// ==========================================
+// ROUTE DE LOGIN (DIRECTE DANS SERVER.JS)
+// ==========================================
+app.post('/api/auth/login', (req, res) => {
+  const { email, password, role } = req.body;
+  
+  // Test simple (à améliorer plus tard avec une vraie DB)
+  if (email === "admin" && password === "admin123") {
+    return res.json({
+      token: "fake-jwt-token",
+      role: "admin",
+      message: "Connexion réussie"
+    });
   }
+  
+  res.status(401).json({ message: "Identifiants invalides" });
 });
 
-// Route de diagnostic
+// Route test racine
 app.get('/', (req, res) => {
-  res.json({ message: "Serveur Petit Poussin en ligne !", status: "OK" });
+  res.json({ status: "Serveur opérationnel", message: "Le Petit Poussin est en ligne !" });
 });
 
 const PORT = process.env.PORT || 5000;
