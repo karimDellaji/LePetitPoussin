@@ -1,71 +1,91 @@
 import React, { useState, useEffect } from 'react';
-import { LogOut, Camera, Calendar, Receipt, Download, Heart } from 'lucide-react';
-import jsPDF from 'jspdf';
+import { Calendar, Image as ImageIcon, CheckCircle2, LogOut } from 'lucide-react';
 
-export default function ParentSpace({ user, onLogout }) {
-    const [photos, setPhotos] = useState([]);
-    const [events, setEvents] = useState([]);
-    const child = user?.info || user;
+const API_BASE_URL = "https://le-petit-poussin-api.onrender.com";
 
-    useEffect(() => {
-        if (child?.section) {
-            fetch('http://localhost:5000/api/media/admin').then(r => r.json()).then(data => {
-                setPhotos(data.filter(m => m.status === 'approuve' && m.classe === child.section));
-            });
-            fetch('http://localhost:5000/api/events').then(r => r.json()).then(setEvents);
-        }
-    }, [child]);
+export default function ParentDashboard({ user, onLogout }) {
+  const [media, setMedia] = useState([]);
+  const [events, setEvents] = useState([]);
 
-    const downloadPhoto = async (url, id) => {
-        const response = await fetch(url);
-        const blob = await response.blob();
-        const link = document.createElement("a");
-        link.href = URL.createObjectURL(blob);
-        link.download = `PetitPoussin_${id}.jpg`;
-        link.click();
+  useEffect(() => {
+    const fetchAll = async () => {
+      try {
+        const [mRes, eRes] = await Promise.all([
+          fetch(`${API_BASE_URL}/api/media/admin`),
+          fetch(`${API_BASE_URL}/api/events`)
+        ]);
+        const mData = await mRes.json();
+        const eData = await eRes.json();
+        // On ne montre que les photos approuvées de SA section
+        setMedia(mData.filter(m => m.status === 'approuve' && (m.classe === user.section || m.section === user.section)));
+        setEvents(eData);
+      } catch (err) { console.error(err); }
     };
+    fetchAll();
+  }, [user.section]);
 
-    if (!child?.prenom) return <div className="p-20 text-center font-black">Chargement...</div>;
+  return (
+    <div className="min-h-screen bg-[#F4F7F6] p-4 md:p-8">
+      <div className="max-w-4xl mx-auto">
+        <header className="flex justify-between items-center mb-10 bg-white p-6 rounded-[2.5rem] shadow-sm">
+          <div>
+            <h2 className="text-2xl font-black text-slate-800 tracking-tight">Bonjour, {user.prenom} !</h2>
+            <p className="text-emerald-500 font-bold text-xs uppercase tracking-widest">{user.section}</p>
+          </div>
+          <button onClick={onLogout} className="p-3 bg-slate-50 text-slate-400 rounded-2xl hover:text-red-500 transition-colors"><LogOut size={20}/></button>
+        </header>
 
-    return (
-        <div className="min-h-screen bg-[#F4F7F6] p-6 pb-24">
-            <header className="flex justify-between items-center bg-white p-8 rounded-[2.5rem] shadow-sm mb-10 border border-emerald-50">
-                <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 bg-emerald-500 text-white rounded-2xl flex items-center justify-center font-black text-xl">{child.prenom.charAt(0)}</div>
-                    <div>
-                        <h2 className="text-xl font-black text-slate-800">{child.prenom} {child.nom}</h2>
-                        <p className="text-emerald-500 font-bold text-[10px] uppercase tracking-widest">{child.section}</p>
-                    </div>
-                </div>
-                <button onClick={onLogout} className="bg-slate-50 p-4 rounded-2xl text-slate-300 hover:text-red-500"><LogOut size={20}/></button>
-            </header>
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <div className="space-y-8">
-                    <section className="bg-slate-900 p-8 rounded-[2.5rem] text-white shadow-2xl">
-                        <h3 className="text-lg font-black mb-6 flex items-center gap-2 text-emerald-400"><Receipt size={20}/> Finance</h3>
-                        <div className={`p-6 rounded-3xl mb-6 ${child.paye ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
-                            <p className="text-2xl font-black">{child.paye ? 'RÉGLÉ ✅' : 'NON RÉGLÉ ❌'}</p>
-                        </div>
-                    </section>
-                </div>
-
-                <div className="lg:col-span-2">
-                    <section className="bg-white p-10 rounded-[3rem] shadow-sm min-h-[500px]">
-                        <h3 className="text-2xl font-black text-slate-800 mb-8 flex items-center gap-3"><Camera size={28} className="text-emerald-500"/> Galerie Photos</h3>
-                        <div className="grid grid-cols-2 gap-6">
-                            {photos.length > 0 ? photos.map(p => (
-                                <div key={p._id} className="group relative rounded-[2rem] overflow-hidden shadow-sm bg-slate-50">
-                                    <img src={p.url} alt="classe" className="w-full h-72 object-cover"/>
-                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center">
-                                        <button onClick={() => downloadPhoto(p.url, p._id)} className="bg-white text-emerald-500 p-4 rounded-2xl font-black text-xs flex items-center gap-2 shadow-xl hover:scale-105 transition-transform"><Download size={16}/> TÉLÉCHARGER</button>
-                                    </div>
-                                </div>
-                            )) : <p className="text-slate-300 italic font-bold">Aucune photo pour le moment.</p>}
-                        </div>
-                    </section>
-                </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          {/* STATUT PAIEMENT */}
+          <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border-b-4 border-emerald-500">
+            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Statut de Frais</h3>
+            <div className="flex items-center gap-3">
+              {user.paye ? (
+                <><CheckCircle2 className="text-emerald-500" size={24}/> <span className="font-bold text-slate-800">Règlement à jour</span></>
+              ) : (
+                <><div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"/> <span className="font-bold text-red-500">Paiement en attente</span></>
+              )}
             </div>
+          </div>
+
+          {/* PROCHAIN ÉVÈNEMENT */}
+          <div className="bg-slate-900 p-8 rounded-[2.5rem] shadow-xl text-white md:col-span-2">
+            <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4">Agenda de l'école</h3>
+            {events.length > 0 ? (
+              <div className="flex gap-6 items-center">
+                <div className="bg-emerald-500 p-3 rounded-2xl font-black text-center min-w-[60px]">
+                  <p className="text-xl">{new Date(events[0].date).getDate()}</p>
+                  <p className="text-[9px] uppercase">{new Date(events[0].date).toLocaleString('fr',{month:'short'})}</p>
+                </div>
+                <div>
+                  <p className="font-bold text-lg">{events[0].titre}</p>
+                  <p className="text-slate-400 text-xs">{events[0].description}</p>
+                </div>
+              </div>
+            ) : <p className="text-slate-500">Aucun évènement prévu</p>}
+          </div>
         </div>
-    );
+
+        {/* GALLERIE PHOTOS */}
+        <div className="mt-12">
+          <h3 className="text-xl font-black text-slate-800 mb-8 flex items-center gap-3">
+            <ImageIcon className="text-emerald-500"/> Moments de vie
+          </h3>
+          {media.length > 0 ? (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {media.map(m => (
+                <div key={m._id} className="aspect-square bg-white p-2 rounded-[2rem] shadow-sm">
+                  <img src={m.url} className="w-full h-full object-cover rounded-[1.5rem]" alt="école" />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="bg-white p-12 rounded-[3rem] text-center text-slate-400 italic shadow-sm">
+              Les photos de la semaine arriveront bientôt !
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }

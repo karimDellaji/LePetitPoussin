@@ -6,6 +6,9 @@ import {
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
+// CONFIGURATION API
+const API_BASE_URL = "https://le-petit-poussin-api.onrender.com"; 
+
 export default function AdminDashboard({ onLogout }) {
   const [tab, setTab] = useState('stats');
   const [eleves, setEleves] = useState([]);
@@ -27,12 +30,12 @@ export default function AdminDashboard({ onLogout }) {
   }, []);
 
   const chargerTout = () => {
-    const api = (p, s) => fetch(`http://localhost:5000/api/${p}`).then(r => r.json()).then(s).catch(e => console.error(e));
+    const api = (p, s) => fetch(`${API_BASE_URL}/api/${p}`).then(r => r.json()).then(s).catch(e => console.error(e));
     api('children', setEleves); api('expenses', setExpenses); api('events', setEvents); api('staff', setStaff); api('media/admin', setMedia);
   };
 
   const handleAction = async (path, method, body, modalKey) => {
-    await fetch(`http://localhost:5000/api/${path}`, { 
+    await fetch(`${API_BASE_URL}/api/${path}`, { 
         method, headers: {'Content-Type':'application/json'}, 
         body: body ? JSON.stringify(body) : null 
     });
@@ -104,7 +107,6 @@ export default function AdminDashboard({ onLogout }) {
           </div>
         </header>
 
-        {/* --- STATS & DASHBOARD PLANNING --- */}
         {tab==='stats' && (
           <div className="space-y-8">
             <div className="grid grid-cols-4 gap-6">
@@ -122,7 +124,6 @@ export default function AdminDashboard({ onLogout }) {
                     <p className="text-[10px] font-black text-slate-400 uppercase">Présents</p><p className="text-4xl font-black text-emerald-500">{eleves.filter(e=>e.present).length}</p>
                 </div>
             </div>
-            {/* PLANNING SUR LE DASHBOARD */}
             <div className="bg-white p-10 rounded-[3rem] shadow-sm">
                 <h3 className="font-black text-slate-800 mb-8 flex items-center gap-2 text-xl"><Calendar className="text-emerald-500"/> Prochainement</h3>
                 <div className="grid grid-cols-3 gap-6">
@@ -139,7 +140,6 @@ export default function AdminDashboard({ onLogout }) {
           </div>
         )}
 
-        {/* --- ÉLÈVES AVEC UPDATE ICON --- */}
         {tab==='eleves' && (
           <div className="space-y-6">
             <div className="flex gap-3">
@@ -177,7 +177,6 @@ export default function AdminDashboard({ onLogout }) {
           </div>
         )}
 
-        {/* --- PERSONNEL --- */}
         {tab==='staff' && (
             <div className="grid grid-cols-3 gap-6">
                 {staff.map(s=>(
@@ -197,7 +196,6 @@ export default function AdminDashboard({ onLogout }) {
             </div>
         )}
 
-        {/* --- PLANNING --- */}
         {tab==='planning' && (
             <div className="grid grid-cols-2 gap-6">
                 {events.map(ev=>(
@@ -215,7 +213,6 @@ export default function AdminDashboard({ onLogout }) {
             </div>
         )}
 
-        {/* --- MÉDIAS --- */}
         {tab==='photos' && (
             <div className="space-y-10">
                 {Object.entries(groupMediaBySection()).map(([section, pics]) => (
@@ -225,7 +222,7 @@ export default function AdminDashboard({ onLogout }) {
                         </h3>
                         <div className="grid grid-cols-4 gap-6">
                             {pics.map(m=>(
-                                <div key={m._id} className="bg-white p-3 rounded-[2.5rem] shadow-sm group">
+                                <div key={m._id} className="bg-white p-3 rounded-[2.5rem] shadow-sm">
                                     <div className="relative overflow-hidden rounded-[2rem] h-40 bg-slate-100">
                                         <img src={m.url} className="w-full h-full object-cover" alt="activity" />
                                         {m.status==='en_attente' && <div className="absolute inset-0 bg-emerald-500/10 backdrop-blur-[2px] flex items-center justify-center"><span className="bg-white text-emerald-600 text-[8px] font-black px-3 py-1 rounded-full shadow-lg">EN ATTENTE</span></div>}
@@ -245,7 +242,6 @@ export default function AdminDashboard({ onLogout }) {
             </div>
         )}
 
-        {/* --- DÉPENSES --- */}
         {tab==='expenses' && (
             <div className="space-y-8">
                 {Object.entries(groupExpensesByMonth()).map(([month, items]) => (
@@ -268,7 +264,7 @@ export default function AdminDashboard({ onLogout }) {
         )}
       </main>
 
-      {/* --- TOUS LES MODALS --- */}
+      {/* MODALS */}
       {modals.eleve && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <div className="bg-white p-10 rounded-[3rem] w-full max-w-md relative shadow-2xl">
@@ -276,8 +272,7 @@ export default function AdminDashboard({ onLogout }) {
                 <h3 className="text-2xl font-black mb-8 text-slate-800">{isEditing ? "Modifier Élève" : "Nouvel Élève"}</h3>
                 <form onSubmit={(e)=>{ 
                     e.preventDefault(); 
-                    const finalData = { ...formData, section: formData.section || 'Petite Section' };
-                    handleAction(isEditing?`children/${selectedItem._id}`:'children', isEditing?'PUT':'POST', finalData, 'eleve'); 
+                    handleAction(isEditing?`children/${selectedItem._id}`:'children', isEditing?'PUT':'POST', {...formData, section: formData.section || 'Petite Section'}, 'eleve'); 
                 }} className="space-y-4">
                     <input required className="w-full p-4 bg-slate-50 rounded-2xl font-bold" placeholder="Prénom" value={formData.prenom || ''} onChange={e=>setFormData({...formData, prenom:e.target.value})} />
                     <input required className="w-full p-4 bg-slate-50 rounded-2xl font-bold" placeholder="Nom" value={formData.nom || ''} onChange={e=>setFormData({...formData, nom:e.target.value})} />
