@@ -6,28 +6,13 @@ import AdminDashboard from './components/AdminDashboard';
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('token'));
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    setIsAuthenticated(false);
-  };
-
   return (
     <Router>
       <Routes>
-        {/* Si l'utilisateur n'est pas connecté, il va sur Login */}
-        <Route 
-          path="/" 
-          element={!isAuthenticated ? <Login onLogin={() => setIsAuthenticated(true)} /> : <Navigate to="/admin-dashboard" />} 
-        />
-        
-        {/* Si l'utilisateur est connecté, il accède au Dashboard complet */}
-        <Route 
-          path="/admin-dashboard" 
-          element={isAuthenticated ? <AdminDashboard onLogout={handleLogout} /> : <Navigate to="/" />} 
-        />
+        <Route path="/" element={!isAuthenticated ? <Login onLogin={() => setIsAuthenticated(true)} /> : <Navigate to="/admin-dashboard" />} />
+        <Route path="/admin-dashboard" element={isAuthenticated ? <AdminDashboard onLogout={() => { localStorage.clear(); setIsAuthenticated(false); }} /> : <Navigate to="/" />} />
       </Routes>
     </Router>
   );
 }
-
 export default App;
