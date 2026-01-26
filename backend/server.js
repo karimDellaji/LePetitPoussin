@@ -1,44 +1,58 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
-const dotenv = require('dotenv');
+require('dotenv').config();
 
-dotenv.config();
 const app = express();
 
-app.use(cors({ origin: '*' }));
+// --- MIDDLEWARES ---
 app.use(express.json());
+app.use(cors());
 
-mongoose.connect(process.env.MONGO_URI)
-  .then(() => console.log('✅ MongoDB Connecté'))
-  .catch(err => console.error('❌ Erreur MongoDB:', err));
+// --- CONNEXION MONGODB ---
+mongoose.connect(process.env.MONGO_URI || "ton_lien_mongodb_ici")
+  .then(() => console.log("✅ MongoDB Connecté"))
+  .catch(err => console.error("❌ Erreur MongoDB:", err));
 
-// --- ROUTES ---
+// --- IMPORT DES ROUTES ---
+const childrenRoutes = require('./routes/children');
+const staffRoutes = require('./routes/staff');
+const expensesRoutes = require('./routes/expenses');
+const eventsRoutes = require('./routes/events');
+const mediaRoutes = require('./routes/media');
 
-// 1. Login direct (pour que ça marche tout de suite)
+// --- ROUTE D'AUTHENTIFICATION (LOGIN) ---
 app.post('/api/auth/login', (req, res) => {
   const { email, password } = req.body;
   
-  // On accepte "admin" OU "admin@test.com" pour être sûr
+  // Acceptation de "admin" ou "admin@test.com" pour la V1.0.0
   if ((email === "admin" || email === "admin@test.com") && password === "admin123") {
-    console.log("✅ Connexion réussie pour:", email);
-    return res.json({ token: "fake-jwt", role: "admin" });
+    console.log("✅ Connexion réussie");
+    return res.json({ 
+      token: "fake-jwt-token-for-now", 
+      role: "admin",
+      user: { name: "Administrateur" }
+    });
   }
   
-  console.log("❌ Tentative échouée pour:", email);
+  console.log("❌ Tentative de connexion échouée");
   res.status(401).json({ message: "Identifiants incorrects" });
 });
 
-// 2. Importation de la route children (si le fichier existe)
-try {
-    const childrenRoutes = require('./routes/children');
-    app.use('/api/children', childrenRoutes);
-    console.log("✅ Route children chargée");
-} catch (e) {
-    console.log("⚠️ Le dossier routes/children.js n'est pas encore détecté");
-}
+// --- UTILISATION DES ROUTES ---
+app.use('/api/children', childrenRoutes);
+app.use('/api/staff', staffRoutes);
+app.use('/api/expenses', expensesRoutes);
+app.use('/api/events', eventsRoutes);
+app.use('/api/media', mediaRoutes);
 
-app.get('/', (req, res) => res.json({ status: "OK" }));
+// --- ROUTE DE TEST ---
+app.get('/', (req, res) => {
+  res.send("🚀 Serveur Le Petit Poussin est en ligne !");
+});
 
+// --- LANCEMENT DU SERVEUR ---
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`🚀 Serveur sur port ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`🚀 Serveur actif sur le port ${PORT}`);
+});
