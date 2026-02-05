@@ -3,7 +3,12 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 
 const app = express();
-app.use(cors());
+app.use(cors({
+  origin: ["https://lepetitpoussin.netlify.app", "http://localhost:5173"], // Ajoute ton URL Netlify exacte
+  methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+  credentials: true,
+  allowedHeaders: ["Content-Type", "Authorization"]
+}));
 app.use(express.json());
 
 // Connexion MongoDB

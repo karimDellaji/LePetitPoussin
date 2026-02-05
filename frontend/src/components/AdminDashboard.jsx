@@ -27,13 +27,21 @@ export default function AdminDashboard({ onLogout }) {
         finances: 'finance/all',
         medias: 'media' 
       };
-      const res = await fetch(`${API_BASE_URL}/api/${endpoints[activeTab]}`);
+      
+      const endpoint = endpoints[activeTab];
+      if (!endpoint) return; // Sécurité si l'onglet est inconnu
+
+      const res = await fetch(`${API_BASE_URL}/api/${endpoint}`);
+      if (!res.ok) throw new Error(`Erreur serveur: ${res.status}`);
+      
       const data = await res.json();
       if (activeTab === 'eleves') setChildren(data);
       else if (activeTab === 'personnel') setStaff(data);
       else if (activeTab === 'finances') setFinances(data);
       else if (activeTab === 'medias') setMedia(data);
-    } catch (err) { console.error("Erreur de chargement:", err); }
+    } catch (err) { 
+      console.error("Erreur de chargement:", err);
+    }
   };
 
   const handleAdd = async (e) => {
