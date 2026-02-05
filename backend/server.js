@@ -12,10 +12,11 @@ app.use(cors({
 app.use(express.json());
 
 // Connexion MongoDB
-mongoose.connect('mongodb://127.0.0.1:27017/fresh_emerald', {
-    useNewUrlParser: true,
-    useUnifiedTopology: true
-}).then(() => console.log("✅ MongoDB Connecté")).catch(err => console.log(err));
+const mongoURI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/fresh_emerald';
+
+mongoose.connect(mongoURI)
+  .then(() => console.log("✅ Connecté à MongoDB Atlas"))
+  .catch(err => console.error("❌ Erreur de connexion MongoDB:", err));
 
 // --- MODÈLES ---
 const Child = mongoose.model('Child', new mongoose.Schema({
