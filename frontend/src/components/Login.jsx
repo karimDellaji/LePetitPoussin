@@ -1,118 +1,64 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 
-const Login = () => {
+const API_BASE_URL = "http://localhost:5000"; // On cible ton PC
+
+export default function Login({ onLogin }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState('admin'); // admin, teacher, parent
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-  
-  const navigate = useNavigate();
 
-  // === CONFIGURATION DE L'URL API ===
-  // On utilise l'URL de Render pour que ça marche sur PC et Mobile
-  const API_BASE_URL = "https://le-petit-poussin-api.onrender.com";
-
-  const handleLogin = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
-    setLoading(true);
-
     try {
-      const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+      const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password, role }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Identifiants incorrects');
+      const data = await res.json();
+      if (res.ok) {
+        localStorage.setItem('token', data.token);
+        onLogin();
+      } else {
+        setError(data.message || 'Identifiants invalides');
       }
-
-      // Stockage du token et redirection
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('role', data.role);
-
-      if (data.role === 'admin') navigate('/admin-dashboard');
-      else if (data.role === 'teacher') navigate('/teacher-dashboard');
-      else navigate('/parent-dashboard');
-
     } catch (err) {
-      setError(err.message || 'Le serveur ne répond pas. Vérifiez votre connexion.');
-    } finally {
-      setLoading(false);
+      setError('Serveur injoignable. Lance "node server.js" dans le dossier backend.');
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-      <div className="max-w-md w-full space-y-8 p-8 bg-white shadow-lg rounded-2xl border border-emerald-100">
-        <div className="text-center">
-          <h2 className="text-3xl font-extrabold text-gray-900">Le Petit Poussin</h2>
-          <p className="mt-2 text-sm text-gray-600">Connectez-vous à votre espace</p>
+    <div className="min-h-screen bg-[#F4F7F6] flex items-center justify-center p-6">
+      <div className="bg-white p-12 rounded-[3rem] shadow-2xl shadow-emerald-100/50 w-full max-w-md border border-emerald-50">
+        <div className="text-center mb-10">
+          <div className="w-20 h-20 bg-emerald-500 rounded-[2rem] mx-auto flex items-center justify-center text-white text-3xl font-black shadow-lg shadow-emerald-200 mb-6">P</div>
+          <h2 className="text-3xl font-black text-slate-800 tracking-tighter">BIENVENUE</h2>
+          <p className="text-slate-400 font-bold text-xs uppercase tracking-widest mt-2">Le Petit Poussin — Admin</p>
         </div>
 
-        <form className="mt-8 space-y-6" onSubmit={handleLogin}>
-          <div className="rounded-md shadow-sm space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Rôle</label>
-              <select
-                value={role}
-                onChange={(e) => setRole(e.target.value)}
-                className="mt-1 block w-full border border-gray-300 rounded-full shadow-sm py-2 px-4 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 text-sm"
-              >
-                <option value="admin">Administrateur</option>
-                <option value="teacher">Enseignante</option>
-                <option value="parent">Parent</option>
-              </select>
-            </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <input
+            type="text"
+            placeholder="Identifiant"
+            className="w-full p-5 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-emerald-500 font-bold text-slate-700 transition-all outline-none"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+          <input
+            type="password"
+            placeholder="Mot de passe"
+            className="w-full p-5 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-emerald-500 font-bold text-slate-700 transition-all outline-none"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+          
+          {error && <p className="text-red-500 text-xs font-bold text-center px-2">{error}</p>}
 
-            <div>
-              <input
-                type="email"
-                required
-                className="appearance-none rounded-full relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 focus:z-10 sm:text-sm"
-                placeholder="Adresse Email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </div>
-            <div>
-              <input
-                type="password"
-                required
-                className="appearance-none rounded-full relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 focus:z-10 sm:text-sm"
-                placeholder="Mot de passe"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </div>
-          </div>
-
-          {error && (
-            <div className="text-red-500 text-sm text-center bg-red-50 py-2 rounded-full">
-              {error}
-            </div>
-          )}
-
-          <div>
-            <button
-              type="submit"
-              disabled={loading}
-              className={`group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-full text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-colors ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
-            >
-              {loading ? 'Connexion en cours...' : 'Se connecter'}
-            </button>
-          </div>
+          <button className="w-full bg-emerald-500 hover:bg-emerald-600 text-white p-5 rounded-2xl font-black text-sm uppercase tracking-widest shadow-lg shadow-emerald-200 transition-all active:scale-95 mt-4">
+            Se Connecter
+          </button>
         </form>
       </div>
     </div>
   );
-};
-
-export default Login;
+}

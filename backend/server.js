@@ -1,58 +1,89 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
-require('dotenv').config();
 
 const app = express();
-
-// --- MIDDLEWARES ---
-app.use(express.json());
 app.use(cors());
+app.use(express.json());
 
-// --- CONNEXION MONGODB ---
-mongoose.connect(process.env.MONGO_URI || "ton_lien_mongodb_ici")
-  .then(() => console.log("✅ MongoDB Connecté"))
-  .catch(err => console.error("❌ Erreur MongoDB:", err));
+// Connexion MongoDB
+mongoose.connect('mongodb://127.0.0.1:27017/fresh_emerald', {
+    useNewUrlParser: true,
+    useUnifiedTopology: true
+}).then(() => console.log("✅ MongoDB Connecté")).catch(err => console.log(err));
 
-// --- IMPORT DES ROUTES ---
-const childrenRoutes = require('./routes/children');
-const staffRoutes = require('./routes/staff');
-const expensesRoutes = require('./routes/expenses');
-const eventsRoutes = require('./routes/events');
-const mediaRoutes = require('./routes/media');
+// --- MODÈLES ---
+const Child = mongoose.model('Child', new mongoose.Schema({
+    prenom: String, nom: String, telephone: String, section: String, 
+    tarif: Number, parentCode: String, estPaye: { type: Boolean, default: false }
+}));
 
-// --- ROUTE D'AUTHENTIFICATION (LOGIN) ---
-app.post('/api/auth/login', (req, res) => {
-  const { email, password } = req.body;
-  
-  // Acceptation de "admin" ou "admin@test.com" pour la V1.0.0
-  if ((email === "admin" || email === "admin@test.com") && password === "admin123") {
-    console.log("✅ Connexion réussie");
-    return res.json({ 
-      token: "fake-jwt-token-for-now", 
-      role: "admin",
-      user: { name: "Administrateur" }
-    });
-  }
-  
-  console.log("❌ Tentative de connexion échouée");
-  res.status(401).json({ message: "Identifiants incorrects" });
+const Staff = mongoose.model('Staff', new mongoose.Schema({
+    nomComplet: String, role: String, salaire: Number, 
+    telephone: String, loginCode: String
+}));
+
+const Finance = mongoose.model('Finance', new mongoose.Schema({
+    type: String, categorie: String, montant: Number, 
+    description: String, createdAt: { type: Date, default: Date.now }
+}));
+
+const Event = mongoose.model('Event', new mongoose.Schema({
+    titre: String, type: String, enseignante: String, 
+    section: String, approuve: { type: Boolean, default: false }, date: Date
+}));
+
+// --- ROUTES AUTHENTIFICATION ---
+
+app.post('/api/auth/login', async (req, res) => {
+    const { username, password, code } = req.body;
+
+    // 1. Check Admin
+    if (username === "admin" && password === "admin123") {
+        return res.json({ role: 'admin', user: { name: "Direction" } });
+    }
+
+    // 2. Check Staff (ENS-XXX)
+    if (code && code.startsWith('ENS-')) {
+        const staff = await Staff.findOne({ loginCode: code });
+        if (staff) return res.json({ role: 'teacher', user: staff });
+    }
+
+    // 3. Check Parent (POU-XXX)
+    if (code && code.startsWith('POU-')) {
+        const parent = await Child.findOne({ parentCode: code });
+        if (parent) return res.json({ role: 'parent', user: parent });
+    }
+
+    res.status(401).json({ message: "Identifiants invalides" });
 });
 
-// --- UTILISATION DES ROUTES ---
-app.use('/api/children', childrenRoutes);
-app.use('/api/staff', staffRoutes);
-app.use('/api/expenses', expensesRoutes);
-app.use('/api/events', eventsRoutes);
-app.use('/api/media', mediaRoutes);
-
-// --- ROUTE DE TEST ---
-app.get('/', (req, res) => {
-  res.send("🚀 Serveur Le Petit Poussin est en ligne !");
+// --- AUTRES ROUTES (CRUD) ---
+app.get('/api/children', async (req, res) => res.json(await Child.find()));
+app.post('/api/children', async (req, res) => res.json(await new Child(req.body).save()));
+app.patch('/api/children/:id/toggle-payment', async (req, res) => {
+    const c = await Child.findById(req.params.id);
+    c.estPaye = !c.estPaye;
+    await c.save();
+    res.json(c);
 });
 
-// --- LANCEMENT DU SERVEUR ---
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`🚀 Serveur actif sur le port ${PORT}`);
+app.get('/api/staff', async (req, res) => res.json(await Staff.find()));
+app.post('/api/staff', async (req, res) => res.json(await new Staff(req.body).save()));
+
+app.get('/api/finance/all', async (req, res) => {
+    const trans = await Finance.find().sort({ createdAt: -1 });
+    const bilan = trans.reduce((acc, t) => {
+        if (t.type === 'Recette') acc.solde += t.montant;
+        else acc.solde -= t.montant;
+        return acc;
+    }, { solde: 0 });
+    res.json({ transactions: trans, bilan });
 });
+app.post('/api/finance/add', async (req, res) => res.json(await new Finance(req.body).save()));
+
+app.get('/api/teacher/events/all', async (req, res) => res.json(await Event.find()));
+app.post('/api/teacher/events/add', async (req, res) => res.json(await new Event(req.body).save()));
+app.patch('/api/teacher/events/:id/approve', async (req, res) => res.json(await Event.findByIdAndUpdate(req.params.id, { approuve: true })));
+
+app.listen(5000, () => console.log("🚀 Server running on port 5000"));
