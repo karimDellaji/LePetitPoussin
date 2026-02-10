@@ -1,15 +1,16 @@
 const mongoose = require('mongoose');
 
-const StaffSchema = new mongoose.Schema({
+const staffSchema = new mongoose.Schema({
   nomComplet: {
     type: String,
     required: [true, "Le nom est obligatoire"]
   },
   role: {
     type: String,
-    enum: ['Enseignante', 'Aide Soignante', 'Administration'],
+    enum: ['Directrice', 'Enseignante', 'Aide Soignante', 'Administration', 'Aide'],
     default: 'Enseignante'
   },
+  // CHAMP UNIFORMISÉ: 'telephone' pour correspondre au frontend
   telephone: {
     type: String,
     required: [true, "Le numéro de téléphone est obligatoire"]
@@ -21,12 +22,13 @@ const StaffSchema = new mongoose.Schema({
   loginCode: {
     type: String,
     required: true,
-    unique: true // Empêche deux profs d'avoir le même code
+    unique: true
   },
-  dateEmbauche: {
+  // CHAMP UNIFORMISÉ: 'createdAt' pour cohérence
+  createdAt: {
     type: Date,
     default: Date.now
   }
 });
 
-module.exports = mongoose.model('Staff', StaffSchema);
+module.exports = mongoose.model('Staff', staffSchema);

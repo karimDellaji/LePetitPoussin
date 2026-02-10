@@ -1,23 +1,32 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Camera, Check, X, LogOut, Send, Users, Sparkles, Clock } from 'lucide-react';
 
-const API_BASE_URL = "http://localhost:5000";
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 export default function TeacherDashboard({ teacher, onLogout }) {
   const [eleves, setEleves] = useState([]);
   const [titre, setTitre] = useState('');
+  const [description, setDescription] = useState('');
   const [type, setType] = useState('Activité');
   const [attendance, setAttendance] = useState({});
+  const [loading, setLoading] = useState(false);
 
-  // Charger les élèves de la section de l'enseignante
+  // Charger les élèves
   useEffect(() => {
-    fetch(`${API_BASE_URL}/api/children`)
-      .then(res => res.json())
-      .then(data => {
-        // Optionnel : filtrer par section si défini dans le profil teacher
-        setEleves(data); 
-      });
+    fetchEleves();
   }, []);
+
+  const fetchEleves = async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/children`);
+      if (res.ok) {
+        const data = await res.json();
+        setEleves(data);
+      }
+    } catch (err) {
+      console.error("Erreur de chargement des élèves:", err);
+    }
+  };
 
   const handleAttendance = (id, status) => {
     setAttendance(prev => ({ ...prev, [id]: status }));
@@ -25,24 +34,47 @@ export default function TeacherDashboard({ teacher, onLogout }) {
 
   const handlePostActivity = async (e) => {
     e.preventDefault();
-    const eventData = {
-      titre,
-      type,
-      enseignante: teacher.nomComplet,
-      date: new Date(),
-      approuve: false // Nécessite validation Admin
-    };
-
-    const res = await fetch(`${API_BASE_URL}/api/teacher/events/add`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(eventData)
-    });
-
-    if (res.ok) {
-      alert("Activité envoyée à la direction !");
-      setTitre('');
+    if (!titre.trim()) {
+      alert("Veuillez entrer un titre pour l'activité");
+      return;
     }
+
+    setLoading(true);
+    try {
+      const eventData = {
+        titre,
+        description,
+        type,
+        enseignante: teacher.nomComplet,
+        section: teacher.section || 'Petite Section',
+        approuve: false
+      };
+
+      const res = await fetch(`${API_BASE_URL}/api/teacher/events/add`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(eventData)
+      });
+
+      if (res.ok) {
+        alert("Activité envoyée à la direction !");
+        setTitre('');
+        setDescription('');
+      } else {
+        const error = await res.json();
+        alert("Erreur: " + (error.message || "Problème lors de l'envoi"));
+      }
+    } catch (err) {
+      console.error("Erreur:", err);
+      alert("Erreur de connexion au serveur");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const submitAttendance = async () => {
+    // TODO: Implémenter l'envoi de l'appel au backend
+    alert("Appel validé ! (Fonctionnalité à implémenter côté backend)");
   };
 
   return (
@@ -54,11 +86,18 @@ export default function TeacherDashboard({ teacher, onLogout }) {
             <Sparkles size={24} />
           </div>
           <div>
-            <h2 className="font-black text-slate-800 uppercase tracking-tighter leading-none text-xl">Bonjour, {teacher.nomComplet}</h2>
-            <p className="text-emerald-500 font-bold text-[10px] uppercase tracking-[0.2em] mt-1">{teacher.role}</p>
+            <h2 className="font-black text-slate-800 uppercase tracking-tighter leading-none text-xl">
+              Bonjour, {teacher.nomComplet}
+            </h2>
+            <p className="text-emerald-500 font-bold text-[10px] uppercase tracking-[0.2em] mt-1">
+              {teacher.role}
+            </p>
           </div>
         </div>
-        <button onClick={onLogout} className="p-4 bg-slate-50 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-2xl transition-all">
+        <button 
+          onClick={onLogout} 
+          className="p-4 bg-slate-50 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-2xl transition-all"
+        >
           <LogOut size={20}/>
         </button>
       </nav>
@@ -79,18 +118,31 @@ export default function TeacherDashboard({ teacher, onLogout }) {
             
             <div className="grid gap-3">
               {eleves.map(e => (
-                <div key={e._id} className="flex justify-between items-center p-5 bg-slate-50 rounded-[2rem] hover:bg-white hover:shadow-md transition-all group">
-                  <span className="font-black text-slate-700 uppercase text-sm tracking-tight">{e.prenom} {e.nom}</span>
+                <div 
+                  key={e._id} 
+                  className="flex justify-between items-center p-5 bg-slate-50 rounded-[2rem] hover:bg-white hover:shadow-md transition-all group"
+                >
+                  <span className="font-black text-slate-700 uppercase text-sm tracking-tight">
+                    {e.prenom} {e.nom}
+                  </span>
                   <div className="flex gap-2">
                     <button 
                       onClick={() => handleAttendance(e._id, 'present')}
-                      className={`p-3 rounded-xl transition-all ${attendance[e._id] === 'present' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-100' : 'bg-white text-slate-300'}`}
+                      className={`p-3 rounded-xl transition-all ${
+                        attendance[e._id] === 'present' 
+                          ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-100' 
+                          : 'bg-white text-slate-300'
+                      }`}
                     >
                       <Check size={18}/>
                     </button>
                     <button 
                       onClick={() => handleAttendance(e._id, 'absent')}
-                      className={`p-3 rounded-xl transition-all ${attendance[e._id] === 'absent' ? 'bg-red-500 text-white shadow-lg shadow-red-100' : 'bg-white text-slate-300'}`}
+                      className={`p-3 rounded-xl transition-all ${
+                        attendance[e._id] === 'absent' 
+                          ? 'bg-red-500 text-white shadow-lg shadow-red-100' 
+                          : 'bg-white text-slate-300'
+                      }`}
                     >
                       <X size={18}/>
                     </button>
@@ -99,8 +151,11 @@ export default function TeacherDashboard({ teacher, onLogout }) {
               ))}
             </div>
             
-            <button className="w-full mt-8 bg-slate-800 text-white font-black py-5 rounded-[2rem] uppercase text-xs tracking-[0.2em] hover:bg-emerald-600 transition-all">
-              Valider l'appel
+            <button 
+              onClick={submitAttendance}
+              className="w-full mt-8 bg-slate-800 text-white font-black py-5 rounded-[2rem] uppercase text-xs tracking-[0.2em] hover:bg-emerald-600 transition-all"
+            >
+              Valider l&apos;appel
             </button>
           </div>
         </div>
@@ -111,38 +166,64 @@ export default function TeacherDashboard({ teacher, onLogout }) {
             <h3 className="font-black uppercase text-slate-800 mb-6">Partager un moment</h3>
             <form onSubmit={handlePostActivity} className="space-y-4">
               <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase ml-4 mb-2 block">Type d'événement</label>
+                <label className="text-[10px] font-black text-slate-400 uppercase ml-4 mb-2 block">
+                  Type d&apos;événement
+                </label>
                 <select 
                   className="w-full bg-slate-50 p-5 rounded-2xl outline-none font-bold text-sm appearance-none border border-transparent focus:border-emerald-200"
                   value={type}
                   onChange={(e) => setType(e.target.value)}
                 >
-                  <option value="Activité">🎨 Activité Manuelle</option>
-                  <option value="Repas">🍱 Repas / Goûter</option>
-                  <option value="Sieste">💤 Sieste</option>
-                  <option value="Sortie">🌳 Sortie / Jeux</option>
+                  <option value="Activité">Activité Manuelle</option>
+                  <option value="Repas">Repas / Goûter</option>
+                  <option value="Sieste">Sieste</option>
+                  <option value="Sortie">Sortie / Jeux</option>
+                  <option value="Photo">Photo</option>
+                  <option value="Annonce">Annonce</option>
                 </select>
               </div>
 
               <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase ml-4 mb-2 block">Description</label>
-                <textarea 
-                  rows="4"
+                <label className="text-[10px] font-black text-slate-400 uppercase ml-4 mb-2 block">
+                  Titre
+                </label>
+                <input
+                  type="text"
                   className="w-full bg-slate-50 p-5 rounded-2xl outline-none font-bold text-sm border border-transparent focus:border-emerald-200"
-                  placeholder="Ex: Les enfants ont adoré la peinture à doigts aujourd'hui !"
+                  placeholder="Ex: Peinture à doigts"
                   value={titre}
                   onChange={(e) => setTitre(e.target.value)}
                   required
                 />
               </div>
 
-              <div className="border-2 border-dashed border-slate-100 rounded-[2rem] p-8 text-center hover:bg-emerald-50 transition-all cursor-pointer group">
-                <Camera className="mx-auto text-slate-300 group-hover:text-emerald-500 transition-colors mb-2" size={32}/>
-                <p className="text-[10px] font-black text-slate-400 uppercase group-hover:text-emerald-600">Ajouter une photo</p>
+              <div>
+                <label className="text-[10px] font-black text-slate-400 uppercase ml-4 mb-2 block">
+                  Description
+                </label>
+                <textarea 
+                  rows="4"
+                  className="w-full bg-slate-50 p-5 rounded-2xl outline-none font-bold text-sm border border-transparent focus:border-emerald-200"
+                  placeholder="Ex: Les enfants ont adoré la peinture à doigts aujourd&apos;hui !"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                />
               </div>
 
-              <button className="w-full bg-emerald-500 text-white font-black py-5 rounded-[2rem] uppercase text-xs tracking-[0.2em] flex items-center justify-center gap-3 hover:bg-slate-800 transition-all shadow-lg shadow-emerald-100">
-                <Send size={16}/> Envoyer à la Direction
+              <div className="border-2 border-dashed border-slate-100 rounded-[2rem] p-8 text-center hover:bg-emerald-50 transition-all cursor-pointer group">
+                <Camera className="mx-auto text-slate-300 group-hover:text-emerald-500 transition-colors mb-2" size={32}/>
+                <p className="text-[10px] font-black text-slate-400 uppercase group-hover:text-emerald-600">
+                  Ajouter une photo (bientôt disponible)
+                </p>
+              </div>
+
+              <button 
+                type="submit"
+                disabled={loading}
+                className="w-full bg-emerald-500 text-white font-black py-5 rounded-[2rem] uppercase text-xs tracking-[0.2em] flex items-center justify-center gap-3 hover:bg-slate-800 transition-all shadow-lg shadow-emerald-100 disabled:opacity-50"
+              >
+                <Send size={16}/> 
+                {loading ? 'Envoi...' : "Envoyer à la Direction"}
               </button>
             </form>
           </div>

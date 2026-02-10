@@ -1,26 +1,51 @@
 const express = require('express');
 const router = express.Router();
-const mongoose = require('mongoose');
+const Event = require('../models/Event');
 
-const EventSchema = new mongoose.Schema({
-  titre: String, description: String, date: Date
-});
-const Event = mongoose.models.Event || mongoose.model('Event', EventSchema);
-
+/**
+ * @route   GET /api/events
+ * @desc    Récupérer tous les événements
+ */
 router.get('/', async (req, res) => {
-  const events = await Event.find().sort({ date: 1 });
-  res.json(events);
+  try {
+    const events = await Event.find().sort({ date: -1 });
+    res.json(events);
+  } catch (err) {
+    res.status(500).json({ message: "Erreur lors de la récupération des événements", error: err.message });
+  }
 });
 
+/**
+ * @route   POST /api/events
+ * @desc    Créer un nouvel événement
+ */
 router.post('/', async (req, res) => {
-  const newEvent = new Event(req.body);
-  await newEvent.save();
-  res.json(newEvent);
+  try {
+    const newEvent = new Event({
+      ...req.body,
+      date: new Date()
+    });
+    await newEvent.save();
+    res.status(201).json(newEvent);
+  } catch (err) {
+    res.status(400).json({ message: "Erreur lors de la création de l'événement", error: err.message });
+  }
 });
 
+/**
+ * @route   DELETE /api/events/:id
+ * @desc    Supprimer un événement
+ */
 router.delete('/:id', async (req, res) => {
-  await Event.findByIdAndDelete(req.params.id);
-  res.json({ message: "Supprimé" });
+  try {
+    const deletedEvent = await Event.findByIdAndDelete(req.params.id);
+    if (!deletedEvent) {
+      return res.status(404).json({ message: "Événement non trouvé" });
+    }
+    res.json({ message: "Événement supprimé avec succès" });
+  } catch (err) {
+    res.status(500).json({ message: "Erreur lors de la suppression", error: err.message });
+  }
 });
 
 module.exports = router;

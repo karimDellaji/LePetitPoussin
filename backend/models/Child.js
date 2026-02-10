@@ -11,7 +11,8 @@ const childSchema = new mongoose.Schema({
     required: true,
     trim: true 
   },
-  telephone: { 
+  // CHAMP UNIFORMISÉ: 'parentTel' pour correspondre au frontend
+  parentTel: { 
     type: String, 
     required: true 
   },
@@ -24,12 +25,12 @@ const childSchema = new mongoose.Schema({
     type: String, 
     unique: true 
   },
-  // --- NOUVEAUX CHAMPS POUR LE DÉPLOIEMENT ---
   tarif: { 
     type: Number, 
     required: true,
     default: 0 
   },
+  // CHAMP UNIFORMISÉ: 'estPaye' utilisé partout
   estPaye: { 
     type: Boolean, 
     default: false 
@@ -38,14 +39,14 @@ const childSchema = new mongoose.Schema({
     type: String, 
     default: '' 
   },
-  // ------------------------------------------
-  dateInscription: { 
+  // CHAMP UNIFORMISÉ: 'createdAt' pour correspondre au backend original
+  createdAt: { 
     type: Date, 
     default: Date.now 
   }
 });
 
-// Optionnel : Un petit helper pour formater le nom complet si besoin
+// Virtual pour compatibilité si besoin
 childSchema.virtual('nomComplet').get(function() {
   return `${this.prenom} ${this.nom}`;
 });

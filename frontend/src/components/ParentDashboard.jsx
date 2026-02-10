@@ -1,20 +1,34 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { 
-  Heart, Calendar, Bell, LogOut, Camera, 
-  MapPin, Clock, Star, CheckCircle2, AlertCircle 
+  Heart, Calendar, LogOut, Camera, 
+  MapPin, Clock, Star, CheckCircle2, AlertCircle, Phone
 } from 'lucide-react';
 
-const API_BASE_URL = "http://localhost:5000";
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 export default function ParentDashboard({ child, onLogout }) {
   const [journal, setJournal] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Charger les activités approuvées pour la section de l'enfant
-    fetch(`${API_BASE_URL}/api/teacher/events/approved/${child.section}`)
-      .then(res => res.json())
-      .then(data => setJournal(data));
+    fetchActivities();
   }, [child.section]);
+
+  const fetchActivities = async () => {
+    try {
+      setLoading(true);
+      // CORRIGÉ: Utilise la bonne route API
+      const res = await fetch(`${API_BASE_URL}/api/teacher/events/approved/${child.section}`);
+      if (res.ok) {
+        const data = await res.json();
+        setJournal(data);
+      }
+    } catch (err) {
+      console.error("Erreur de chargement des activités:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#FDFEFE] font-sans pb-20">
@@ -23,7 +37,7 @@ export default function ParentDashboard({ child, onLogout }) {
         <div className="max-w-4xl mx-auto flex justify-between items-center">
           <div className="flex items-center gap-5">
             <div className="w-20 h-20 bg-emerald-500 rounded-[2rem] flex items-center justify-center text-white font-black text-3xl shadow-xl shadow-emerald-100 border-4 border-white">
-              {child.prenom[0]}
+              {child.prenom?.[0] || '?'}
             </div>
             <div>
               <h1 className="text-3xl font-black text-slate-800 uppercase tracking-tighter">
@@ -59,7 +73,7 @@ export default function ParentDashboard({ child, onLogout }) {
               </div>
               <div>
                 <h4 className="font-black text-red-600 uppercase text-sm">Paiement en attente</h4>
-                <p className="text-red-400 font-bold text-xs mt-1">La scolarité de ce mois n'a pas encore été régularisée.</p>
+                <p className="text-red-400 font-bold text-xs mt-1">La scolarité de ce mois n&apos;a pas encore été régularisée.</p>
               </div>
             </div>
             <div className="text-right">
@@ -81,21 +95,30 @@ export default function ParentDashboard({ child, onLogout }) {
               Moments magiques
             </h3>
             <span className="text-slate-400 font-bold text-[10px] uppercase tracking-widest bg-slate-100 px-4 py-2 rounded-full">
-              Aujourd'hui
+              Aujourd&apos;hui
             </span>
           </div>
 
-          {journal.length === 0 ? (
+          {loading ? (
+            <div className="bg-white border-4 border-dashed border-slate-50 p-20 rounded-[4rem] text-center">
+              <p className="text-slate-300 font-black uppercase text-sm tracking-widest">
+                Chargement...
+              </p>
+            </div>
+          ) : journal.length === 0 ? (
             <div className="bg-white border-4 border-dashed border-slate-50 p-20 rounded-[4rem] text-center">
               <Camera size={48} className="mx-auto text-slate-100 mb-6" />
               <p className="text-slate-300 font-black uppercase text-sm tracking-widest">
-                L'enseignante n'a pas encore posté de photos.
+                L&apos;enseignante n&apos;a pas encore posté de photos.
               </p>
             </div>
           ) : (
             <div className="grid gap-10">
               {journal.map(post => (
-                <div key={post._id} className="bg-white rounded-[4rem] shadow-2xl shadow-slate-100 overflow-hidden border border-slate-50 transform hover:-translate-y-2 transition-all duration-300">
+                <div 
+                  key={post._id} 
+                  className="bg-white rounded-[4rem] shadow-2xl shadow-slate-100 overflow-hidden border border-slate-50 transform hover:-translate-y-2 transition-all duration-300"
+                >
                   {/* Image si elle existe */}
                   {post.mediaUrl ? (
                     <img 
@@ -104,7 +127,7 @@ export default function ParentDashboard({ child, onLogout }) {
                       alt="activité"
                     />
                   ) : (
-                    <div className="w-full h-4 bg-emerald-500" /> /* Barre colorée si pas d'image */
+                    <div className="w-full h-4 bg-emerald-500" />
                   )}
                   
                   <div className="p-10">
@@ -113,15 +136,19 @@ export default function ParentDashboard({ child, onLogout }) {
                         {post.type}
                       </span>
                       <div className="flex items-center gap-2 text-slate-300 font-bold text-[10px] uppercase">
-                        <Clock size={12}/> {new Date(post.date).toLocaleTimeString([], {hour: '2h', minute:'2h'})}
+                        <Clock size={12}/> 
+                        {new Date(post.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                       </div>
                     </div>
                     <h4 className="text-2xl font-black text-slate-800 uppercase tracking-tight mb-4 leading-tight">
                       {post.titre}
                     </h4>
+                    {post.description && (
+                      <p className="text-slate-500 text-sm mb-4">{post.description}</p>
+                    )}
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center text-slate-400 text-[10px] font-black uppercase">
-                        {post.enseignante[0]}
+                        {post.enseignante?.[0] || '?'}
                       </div>
                       <p className="text-slate-400 font-bold text-xs uppercase tracking-widest">
                         Posté par Mme. {post.enseignante}
@@ -144,7 +171,7 @@ export default function ParentDashboard({ child, onLogout }) {
              </div>
              <p className="font-black uppercase text-xs leading-loose tracking-widest">
                 Votre enfant est en sécurité<br/>
-                <span className="text-emerald-400">Jardin d'enfants Fresh Emerald</span>
+                <span className="text-emerald-400">Le Petit Poussin</span>
              </p>
           </div>
           <div className="flex gap-4">

@@ -8,16 +8,16 @@ const Child = require('../models/Child');
  */
 router.get('/', async (req, res) => {
   try {
-    const children = await Child.find().sort({ dateInscription: -1 });
+    const children = await Child.find().sort({ createdAt: -1 });
     res.json(children);
   } catch (err) {
-    res.status(500).json({ message: "Erreur lors de la récupération des élèves", error: err });
+    res.status(500).json({ message: "Erreur lors de la récupération des élèves", error: err.message });
   }
 });
 
 /**
  * @route   POST /api/children
- * @desc    Inscrire un nouvel élève (avec tarif et observations)
+ * @desc    Inscrire un nouvel élève
  */
 router.post('/', async (req, res) => {
   try {
@@ -26,23 +26,24 @@ router.post('/', async (req, res) => {
     const newChild = new Child({
       prenom: req.body.prenom,
       nom: req.body.nom,
-      telephone: req.body.telephone,
+      parentTel: req.body.parentTel || req.body.telephone,
       section: req.body.section,
       tarif: req.body.tarif,
-      observations: req.body.observations,
-      parentCode: parentCode
+      observations: req.body.observations || '',
+      parentCode: parentCode,
+      estPaye: false
     });
 
     const savedChild = await newChild.save();
     res.status(201).json(savedChild);
   } catch (err) {
-    res.status(400).json({ message: "Erreur lors de l'inscription", error: err });
+    res.status(400).json({ message: "Erreur lors de l'inscription", error: err.message });
   }
 });
 
 /**
  * @route   PUT /api/children/:id
- * @desc    Mettre à jour les infos d'un enfant (Fonction Update du Dashboard)
+ * @desc    Mettre à jour les infos d'un enfant
  */
 router.put('/:id', async (req, res) => {
   try {
@@ -51,9 +52,32 @@ router.put('/:id', async (req, res) => {
       { $set: req.body },
       { new: true }
     );
+    if (!updatedChild) {
+      return res.status(404).json({ message: "Enfant non trouvé" });
+    }
     res.json(updatedChild);
   } catch (err) {
-    res.status(400).json({ message: "Erreur lors de la mise à jour", error: err });
+    res.status(400).json({ message: "Erreur lors de la mise à jour", error: err.message });
+  }
+});
+
+/**
+ * @route   PATCH /api/children/:id
+ * @desc    Mettre à jour partiellement un enfant (toggle paiement)
+ */
+router.patch('/:id', async (req, res) => {
+  try {
+    const updatedChild = await Child.findByIdAndUpdate(
+      req.params.id,
+      { $set: req.body },
+      { new: true }
+    );
+    if (!updatedChild) {
+      return res.status(404).json({ message: "Enfant non trouvé" });
+    }
+    res.json(updatedChild);
+  } catch (err) {
+    res.status(400).json({ message: "Erreur lors de la mise à jour", error: err.message });
   }
 });
 
@@ -64,13 +88,15 @@ router.put('/:id', async (req, res) => {
 router.patch('/:id/toggle-payment', async (req, res) => {
   try {
     const child = await Child.findById(req.params.id);
-    if (!child) return res.status(404).json({ message: "Enfant non trouvé" });
+    if (!child) {
+      return res.status(404).json({ message: "Enfant non trouvé" });
+    }
     
     child.estPaye = !child.estPaye;
     await child.save();
     res.json(child);
   } catch (err) {
-    res.status(500).json({ message: "Erreur lors du changement de statut", error: err });
+    res.status(500).json({ message: "Erreur lors du changement de statut", error: err.message });
   }
 });
 
@@ -80,10 +106,13 @@ router.patch('/:id/toggle-payment', async (req, res) => {
  */
 router.delete('/:id', async (req, res) => {
   try {
-    await Child.findByIdAndDelete(req.params.id);
+    const deletedChild = await Child.findByIdAndDelete(req.params.id);
+    if (!deletedChild) {
+      return res.status(404).json({ message: "Enfant non trouvé" });
+    }
     res.json({ success: true, message: "Élève supprimé avec succès" });
   } catch (err) {
-    res.status(500).json({ message: "Erreur lors de la suppression", error: err });
+    res.status(500).json({ message: "Erreur lors de la suppression", error: err.message });
   }
 });
 
