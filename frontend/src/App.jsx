@@ -124,7 +124,7 @@ export default function App() {
             </>
           ) : (
             <input 
-              placeholder={`Code ${mode === 'parent' ? 'POU-XXXX' : 'ENS-XXXX'}`} 
+              placeholder={`Code ${mode === 'parent' ? 'POU-XXX' : 'ENS-XXX'}`} 
               className="w-full bg-slate-50 p-5 rounded-2xl outline-none font-bold" 
               value={credentials.code} 
               onChange={e => setCredentials({...credentials, code: e.target.value.toUpperCase()})} 

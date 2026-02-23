@@ -24,7 +24,7 @@ router.post('/', async (req, res) => {
     const { nomComplet, role, salaire, telephone } = req.body;
     
     // Générer un code de connexion unique
-    const loginCode = "ENS-" + Math.floor(1000 + Math.random() * 9000);
+    const loginCode = "ENS-" + Math.floor(100 + Math.random() * 900);
     
     const newStaff = new Staff({
       nomComplet,

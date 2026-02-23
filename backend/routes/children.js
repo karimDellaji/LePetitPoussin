@@ -21,7 +21,7 @@ router.get('/', async (req, res) => {
  */
 router.post('/', async (req, res) => {
   try {
-    const parentCode = "POU-" + Math.floor(1000 + Math.random() * 9000);
+    const parentCode = "POU-" + Math.floor(100 + Math.random() * 900);
     
     const newChild = new Child({
       prenom: req.body.prenom,
